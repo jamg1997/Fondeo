@@ -1,0 +1,1052 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Registro de Fondeo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Concepto: libro de cuentas de trading. Cifras en mono, líneas finas, un solo acento azul;
+   verde/rojo/ámbar solo para estado (ganancia, pérdida, alerta). Una columna en móvil. */
+:root{
+  --bg:#f2f5f9; --surface:#ffffff; --surface-2:#e8edf4; --line:#d3dbe6;
+  --fg:#111925; --muted:#586577;
+  --accent:#2646d9; --accent-fg:#ffffff; --accent-soft:#e2e8ff;
+  --gain:#117a45; --gain-soft:#d9f2e4;
+  --loss:#c2352d; --loss-soft:#fbe3e0;
+  --warn:#9a6200; --warn-soft:#faeecf;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c1017; --surface:#131a24; --surface-2:#1b2432; --line:#283346;
+    --fg:#e6ebf3; --muted:#93a0b4;
+    --accent:#8ea7ff; --accent-fg:#0c1017; --accent-soft:#1e2a52;
+    --gain:#46d291; --gain-soft:#11301f;
+    --loss:#ff7d73; --loss-soft:#3b1916;
+    --warn:#e9b550; --warn-soft:#392a0b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c1017; --surface:#131a24; --surface-2:#1b2432; --line:#283346;
+  --fg:#e6ebf3; --muted:#93a0b4;
+  --accent:#8ea7ff; --accent-fg:#0c1017; --accent-soft:#1e2a52;
+  --gain:#46d291; --gain-soft:#11301f;
+  --loss:#ff7d73; --loss-soft:#3b1916;
+  --warn:#e9b550; --warn-soft:#392a0b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--fg);
+  font:15px/1.5 var(--font-body);
+  padding-block:24px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font:700 clamp(28px,5vw,40px)/1.05 var(--font-display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font:600 19px/1.2 var(--font-display);margin:0;text-wrap:balance}
+h3{font:600 17px/1.2 var(--font-display);margin:0;text-wrap:balance}
+p{margin:0}
+.eyebrow,.lbl{font:500 11px/1.2 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.gain{color:var(--gain)} .loss{color:var(--loss)} .warn{color:var(--warn)}
+.hint{font-size:12.5px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 24px;flex-wrap:wrap;margin-bottom:20px}
+.top .eyebrow{margin-bottom:10px}
+.sync{font-size:12.5px;color:var(--muted);min-height:18px}
+.sync.err{color:var(--loss)}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:24px;overflow-x:auto}
+.tabs a{
+  padding:11px 14px;color:var(--muted);text-decoration:none;font-weight:500;white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tabs a:hover{color:var(--fg)}
+.tabs a[aria-current="page"]{color:var(--accent);border-bottom-color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.ledger{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+  background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+}
+.ledger.six{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cell{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cell .v{font:600 22px/1.1 var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .s{font-size:12px;color:var(--muted)}
+.cell.sm .v{font-size:18px}
+
+.sect-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:32px 0 14px;flex-wrap:wrap}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:16px}
+.card,.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.card{display:flex;flex-direction:column;gap:16px}
+.card.dim{opacity:.82}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.card-head .sub{font-size:13px;color:var(--muted);margin-top:4px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{
+  font:600 10.5px/1 var(--font-mono);letter-spacing:.07em;text-transform:uppercase;
+  padding:5px 8px;border-radius:4px;background:var(--surface-2);color:var(--muted);white-space:nowrap;
+}
+.pill.eval{background:var(--accent-soft);color:var(--accent)}
+.pill.funded{background:var(--gain-soft);color:var(--gain)}
+.pill.burned{background:var(--loss-soft);color:var(--loss)}
+.pill.cash-gasto{background:var(--loss-soft);color:var(--loss)}
+.pill.cash-payout{background:var(--gain-soft);color:var(--gain)}
+.bigrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.bigrow>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.big{font:600 28px/1.05 var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+.meter{display:flex;flex-direction:column;gap:7px;min-width:0}
+.meter-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.bar{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px}
+.meter.gain .bar i{background:var(--gain)}
+.meter.warn .bar i{background:var(--warn)}
+.meter.loss .bar i{background:var(--loss)}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .35s ease}}
+
+.note{padding:10px 12px;border-radius:6px;font-size:13.5px;display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;background:var(--surface-2)}
+.note.gain{background:var(--gain-soft);color:var(--gain)}
+.note.loss{background:var(--loss-soft);color:var(--loss)}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.info{background:var(--accent-soft);color:var(--accent)}
+
+.btn{
+  font:600 14px/1 var(--font-body);min-height:40px;padding:0 16px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--line);background:var(--surface);color:var(--fg);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn.armed{background:var(--loss);border-color:var(--loss);color:#fff}
+.btn.danger{color:var(--loss)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .d{font:500 13px/1.3 var(--font-mono);color:var(--muted);min-width:64px}
+.row .grow{flex:1 1 180px;min-width:0;overflow-wrap:anywhere}
+.row .grow small{display:block;color:var(--muted);font-size:12.5px}
+.row .amt{font:600 15px/1 var(--font-mono);font-variant-numeric:tabular-nums;min-width:84px;text-align:right}
+.empty{padding:22px 18px;color:var(--muted);text-align:center;border:1px dashed var(--line);border-radius:var(--r);background:var(--surface)}
+
+.split{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+.panel{display:flex;flex-direction:column;gap:16px}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.fields .full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label,.field .flabel{font-size:13px;font-weight:600}
+input[type=text],input[type=date],input[type=number],select,textarea{
+  font:400 15px/1.3 var(--font-body);color:var(--fg);background:var(--bg);
+  border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-height:44px;width:100%;min-width:0;
+}
+input.n,textarea.n{font-family:var(--font-mono)}
+textarea{min-height:92px;resize:vertical}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden;min-height:44px}
+.seg label{position:relative;display:flex;font-weight:600;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;background:var(--bg);color:var(--muted)}
+.seg input:checked + span.win{background:var(--gain-soft);color:var(--gain)}
+.seg input:checked + span.lose{background:var(--loss-soft);color:var(--loss)}
+.seg input:focus-visible + span{outline:2px solid var(--accent);outline-offset:-2px}
+.msg{font-size:13.5px;min-height:20px}
+.msg.ok{color:var(--gain)} .msg.bad{color:var(--loss)}
+
+.pv{display:grid;gap:0}
+.pv .line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.pv .line:first-child{border-top:0}
+.pv .line .n{font-weight:600;text-align:right}
+
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin:0}
+.facts div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.facts dt{font:500 10.5px/1.2 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.facts dd{margin:0;font:500 14px/1.3 var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stack{display:flex;flex-direction:column;gap:14px}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:820px}
+th,td{padding:11px 14px;text-align:right;border-top:1px solid var(--line);white-space:nowrap}
+th{font:500 10.5px/1.2 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:0;background:var(--surface-2)}
+td{font:500 13.5px/1.2 var(--font-mono);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left;font-family:var(--font-body);font-weight:600}
+td:first-child{text-transform:capitalize}
+tr.cur td{background:var(--accent-soft)}
+.chartbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.chartbox svg{display:block;width:100%;height:auto;color:var(--muted)}
+.ai-out{white-space:pre-wrap;font-size:14.5px;line-height:1.6;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-height:60px;overflow-wrap:anywhere}
+.inline{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.inline select{width:auto;min-width:180px}
+
+@media (max-width:820px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:700px){
+  .ledger,.ledger.six{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .fields{grid-template-columns:minmax(0,1fr)}
+  .big{font-size:24px}
+  .row .amt{text-align:left}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Futuros · cuentas de fondeo</p>
+      <h1>Registro de Fondeo</h1>
+    </div>
+    <p class="sync" id="sync" role="status">Cargando tus datos…</p>
+  </header>
+
+  <nav class="tabs" aria-label="Secciones">
+    <a href="#resumen">Resumen</a>
+    <a href="#registrar">Registrar día</a>
+    <a href="#cuentas">Cuentas</a>
+    <a href="#analisis">Análisis</a>
+  </nav>
+
+  <section id="view-resumen">
+    <div class="ledger" id="kpis"></div>
+    <div class="sect-head">
+      <h2>Cuentas en juego</h2>
+      <a class="btn primary" href="#registrar">Registrar día</a>
+    </div>
+    <div class="cards" id="activeCards"></div>
+    <div class="sect-head"><h2>Últimos días</h2></div>
+    <div id="recentDays"></div>
+  </section>
+
+  <section id="view-registrar" hidden>
+    <div class="split">
+      <form class="panel" id="dayForm" autocomplete="off">
+        <h2>Registrar día</h2>
+        <div class="fields">
+          <div class="field full">
+            <label for="day-acc">Cuenta</label>
+            <select id="day-acc"></select>
+          </div>
+          <div class="field">
+            <label for="day-date">Fecha</label>
+            <input type="date" id="day-date">
+          </div>
+          <div class="field">
+            <span class="flabel" id="lbl-sign">Resultado</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lbl-sign">
+              <label><input type="radio" name="sign" id="day-win" value="win" checked><span class="win">Gané</span></label>
+              <label><input type="radio" name="sign" id="day-loss" value="loss"><span class="lose">Perdí</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="day-amount">Monto del día ($)</label>
+            <input type="text" inputmode="decimal" id="day-amount" class="n" placeholder="ej. 320">
+          </div>
+          <div class="field">
+            <label for="day-dll">DLL de hoy ($)</label>
+            <input type="text" inputmode="decimal" id="day-dll" class="n">
+          </div>
+          <div class="field full">
+            <label for="day-note">Nota (opcional)</label>
+            <input type="text" id="day-note" placeholder="ej. Londres, 2 operaciones, respeté el stop">
+          </div>
+        </div>
+        <p class="hint">Si la cuenta tiene DLL móvil, escribe el que ves hoy en la plataforma. Se guarda como el DLL actual de la cuenta.</p>
+        <div class="note info" id="day-exists" hidden>Ya hay un registro de esta cuenta en esa fecha. Si guardas, lo reemplazas.</div>
+        <div class="actions">
+          <button class="btn primary" type="submit" id="day-save">Guardar día</button>
+        </div>
+        <p class="msg" id="day-msg" role="status"></p>
+      </form>
+      <aside class="panel" id="preview" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <section id="view-cuentas" hidden>
+    <div class="sect-head" style="margin-top:0">
+      <h2>Mis cuentas</h2>
+      <button class="btn primary" type="button" id="toggleNew">Nueva cuenta</button>
+    </div>
+    <form class="panel" id="accForm" autocomplete="off" hidden style="margin-bottom:16px">
+      <h2 id="accFormTitle">Nueva cuenta</h2>
+      <div class="fields">
+        <div class="field">
+          <label for="acc-firm">Firma</label>
+          <input type="text" id="acc-firm" value="Lucid">
+        </div>
+        <div class="field">
+          <label for="acc-name">Nombre</label>
+          <input type="text" id="acc-name" placeholder="ej. LucidFlex 25K #3">
+        </div>
+        <div class="field">
+          <label for="acc-size">Tamaño de la cuenta ($)</label>
+          <input type="text" inputmode="decimal" id="acc-size" class="n" value="25000">
+        </div>
+        <div class="field">
+          <label for="acc-cost">Precio que pagaste ($)</label>
+          <input type="text" inputmode="decimal" id="acc-cost" class="n" placeholder="ej. 130">
+        </div>
+        <div class="field">
+          <label for="acc-target">Objetivo de beneficio ($)</label>
+          <input type="text" inputmode="decimal" id="acc-target" class="n" value="1250">
+        </div>
+        <div class="field">
+          <label for="acc-cons">Consistencia (%)</label>
+          <input type="text" inputmode="decimal" id="acc-cons" class="n" value="40">
+        </div>
+        <div class="field">
+          <label for="acc-mll">Pérdida máxima / MLL ($)</label>
+          <input type="text" inputmode="decimal" id="acc-mll" class="n" value="1000">
+        </div>
+        <div class="field">
+          <label for="acc-dll">DLL actual ($)</label>
+          <input type="text" inputmode="decimal" id="acc-dll" class="n" value="600">
+        </div>
+        <div class="field">
+          <label for="acc-dd">Tipo de drawdown</label>
+          <select id="acc-dd">
+            <option value="lock">Trailing EOD, se bloquea en el balance inicial</option>
+            <option value="trail">Trailing EOD, sin bloqueo</option>
+            <option value="fixed">Fijo, no sube</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="acc-start">Fecha de inicio</label>
+          <input type="date" id="acc-start">
+        </div>
+        <div class="field full">
+          <label for="acc-notes">Notas (opcional)</label>
+          <input type="text" id="acc-notes" placeholder="ej. Rithmic, drawdown EOD">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit" id="acc-save">Guardar cuenta</button>
+        <button class="btn" type="button" id="acc-cancel">Cancelar</button>
+      </div>
+      <p class="msg" id="acc-msg" role="status"></p>
+    </form>
+    <div class="stack" id="accList"></div>
+
+    <div class="sect-head"><h2>Gastos y payouts</h2></div>
+    <form class="panel" id="cashForm" autocomplete="off" style="margin-bottom:16px">
+      <div class="fields">
+        <div class="field">
+          <label for="cash-type">Tipo</label>
+          <select id="cash-type">
+            <option value="payout">Payout cobrado</option>
+            <option value="gasto">Gasto (reset, activación, otro)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="cash-acc">Cuenta</label>
+          <select id="cash-acc"></select>
+        </div>
+        <div class="field">
+          <label for="cash-date">Fecha</label>
+          <input type="date" id="cash-date">
+        </div>
+        <div class="field">
+          <label for="cash-amount">Monto ($)</label>
+          <input type="text" inputmode="decimal" id="cash-amount" class="n" placeholder="ej. 700">
+        </div>
+        <div class="field full">
+          <label for="cash-concept">Concepto (opcional)</label>
+          <input type="text" id="cash-concept" placeholder="ej. Primer payout, reset de evaluación">
+        </div>
+      </div>
+      <div class="actions"><button class="btn primary" type="submit">Añadir movimiento</button></div>
+      <p class="msg" id="cash-msg" role="status"></p>
+    </form>
+    <p class="hint" style="margin-bottom:12px">El precio de cada cuenta ya cuenta como inversión. Aquí solo van los gastos extra y los payouts.</p>
+    <div id="cashList"></div>
+  </section>
+
+  <section id="view-analisis" hidden>
+    <div class="sect-head" style="margin-top:0"><h2>Esta semana</h2></div>
+    <div class="ledger" id="sumWeek"></div>
+    <div class="sect-head"><h2>Este mes</h2></div>
+    <div class="ledger" id="sumMonth"></div>
+
+    <div class="sect-head"><h2>P&amp;L por semana</h2></div>
+    <div class="chartbox" id="chart"></div>
+
+    <div class="sect-head"><h2>Semanas</h2></div>
+    <div class="tablewrap" id="weekTable"></div>
+    <div class="sect-head"><h2>Meses</h2></div>
+    <div class="tablewrap" id="monthTable"></div>
+    <p class="hint" style="margin-top:10px">El P&amp;L de las cuentas de evaluación es de simulación. El dinero real es la caja: payouts menos gastos.</p>
+
+    <div id="aiPanel">
+      <div class="sect-head"><h2>Análisis con Claude</h2></div>
+      <div class="panel">
+        <div class="field">
+          <label for="rules">Mis reglas (Claude las usa para revisar tu disciplina)</label>
+          <textarea id="rules" placeholder="ej. Riesgo máximo por operación, pérdida máxima por día, número de operaciones"></textarea>
+        </div>
+        <div class="inline">
+          <select id="aiPeriod" aria-label="Periodo a analizar">
+            <option value="week">Esta semana</option>
+            <option value="lastweek">Semana pasada</option>
+            <option value="month">Este mes</option>
+            <option value="lastmonth">Mes pasado</option>
+          </select>
+          <button class="btn primary" type="button" id="aiRun">Analizar</button>
+          <button class="btn" type="button" id="aiStop" hidden>Detener</button>
+        </div>
+        <div class="ai-out" id="aiOut" aria-live="polite">Elige un periodo y pulsa Analizar. Claude lee tus días, cuentas y movimientos de caja.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- utilidades ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = parseFloat(String(v == null ? "" : v).replace(/\s/g, "").replace(",", ".")); return isFinite(n) ? n : 0; };
+function money(n, signed){
+  n = Math.round((Number(n) || 0) * 100) / 100;
+  const a = Math.abs(n).toLocaleString("en-US", {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  return (n < 0 ? "−" : (signed && n > 0 ? "+" : "")) + "$" + a;
+}
+const today = () => new Date().toLocaleDateString("sv-SE", {timeZone: "Europe/Paris"});
+const parseD = s => { const p = s.split("-").map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])); };
+const fmtD = d => d.toISOString().slice(0, 10);
+const addDays = (s, n) => { const d = parseD(s); d.setUTCDate(d.getUTCDate() + n); return fmtD(d); };
+const weekStart = s => { const d = parseD(s); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return fmtD(d); };
+const MES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const MESL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const shortD = s => { const d = parseD(s); return d.getUTCDate() + " " + MES[d.getUTCMonth()]; };
+function isoWeek(s){
+  const d = parseD(s);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
+  const ft = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  return 1 + Math.round(((d - ft) / 86400000 - 3 + ((ft.getUTCDay() + 6) % 7)) / 7);
+}
+const weekLabel = k => "S" + isoWeek(k) + " · " + shortD(k) + "–" + shortD(addDays(k, 6));
+const monthLabel = k => MESL[+k.slice(5, 7) - 1] + " " + k.slice(0, 4);
+const uid = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+/* ---------- estado ---------- */
+const state = {accounts: [], days: [], cash: [], rules: "", ready: {accounts: false, days: false, cash: false}};
+let db = null, sample = null, editingAcc = null, confirmedOnce = false;
+
+function normAcc(a){
+  return Object.assign({}, a, {
+    name: a.name || "Cuenta", firm: a.firm || "",
+    size: num(a.size) || 25000, cost: num(a.cost), target: num(a.target), mll: num(a.mll) || 1000,
+    dll: num(a.dll), consistency: a.consistency == null ? 40 : num(a.consistency),
+    ddType: a.ddType || "lock", stage: a.stage || "eval", alive: a.alive !== false,
+    startDate: a.startDate || "", passedOn: a.passedOn || null, burnedOn: a.burnedOn || null, burnedIn: a.burnedIn || null
+  });
+}
+const accById = id => state.accounts.find(a => a.id === id);
+const accName = id => { const a = accById(id); return a ? a.name : "Cuenta eliminada"; };
+
+/* ---------- cálculos ---------- */
+function stageDays(acc, extra){
+  let ds = state.days.filter(d => d.accountId === acc.id && (d.stage || "eval") === acc.stage);
+  if (extra){
+    ds = ds.filter(d => d.date !== extra.date);
+    ds.push({date: extra.date, pnl: extra.pnl});
+  }
+  return ds.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+}
+function metrics(acc, extra){
+  const ds = stageDays(acc, extra);
+  let bal = acc.size, peak = acc.size, profit = 0, best = 0;
+  ds.forEach(d => {
+    const p = num(d.pnl);
+    bal += p; profit += p;
+    if (bal > peak) peak = bal;
+    if (p > best) best = p;
+  });
+  let level;
+  if (acc.ddType === "fixed") level = acc.size - acc.mll;
+  else if (acc.ddType === "trail") level = peak - acc.mll;
+  else level = Math.min(peak - acc.mll, acc.size);
+  const pct = acc.consistency / 100;
+  const share = profit > 0 ? best / profit : 0;
+  const needConsist = pct > 0 ? best / pct : 0;
+  const consistOk = pct <= 0 || best <= pct * Math.max(profit, 0) + 1e-9;
+  const goal = acc.stage === "eval" ? Math.max(acc.target, needConsist) : 0;
+  return {
+    days: ds.length, bal, profit, best, peak, level, cushion: bal - level, share, pct, consistOk, goal,
+    toTarget: Math.max(0, acc.target - profit), toGoal: Math.max(0, goal - profit),
+    passReady: acc.stage === "eval" && acc.target > 0 && profit >= acc.target && consistOk
+  };
+}
+function dayOf(accId, date){ return state.days.find(d => d.id === accId + "_" + date); }
+
+function totals(){
+  const spend = state.accounts.reduce((s, a) => s + a.cost, 0) + state.cash.filter(c => c.type === "gasto").reduce((s, c) => s + num(c.amount), 0);
+  const payouts = state.cash.filter(c => c.type === "payout").reduce((s, c) => s + num(c.amount), 0);
+  const passed = state.accounts.filter(a => a.passedOn).length;
+  const burnedEval = state.accounts.filter(a => !a.alive && a.burnedIn === "eval").length;
+  const closed = passed + burnedEval;
+  return {
+    invested: spend, payouts, net: payouts - spend, bought: state.accounts.length,
+    active: state.accounts.filter(a => a.alive).length, passed,
+    burned: state.accounts.filter(a => !a.alive).length, closed,
+    passRate: closed > 0 ? passed / closed : null, costPerPass: passed > 0 ? spend / passed : null
+  };
+}
+
+function buckets(keyFn){
+  const m = new Map();
+  const get = k => {
+    if (!m.has(k)) m.set(k, {k: k, pnl: 0, days: 0, wins: 0, losses: 0, sumW: 0, sumL: 0, best: null, worst: null, passed: 0, burned: 0, spend: 0, payout: 0});
+    return m.get(k);
+  };
+  state.days.forEach(d => {
+    const b = get(keyFn(d.date)), p = num(d.pnl);
+    b.pnl += p; b.days++;
+    if (p > 0){ b.wins++; b.sumW += p; } else if (p < 0){ b.losses++; b.sumL += p; }
+    if (b.best == null || p > b.best) b.best = p;
+    if (b.worst == null || p < b.worst) b.worst = p;
+  });
+  state.accounts.forEach(a => {
+    if (a.startDate) get(keyFn(a.startDate)).spend += a.cost;
+    if (a.passedOn) get(keyFn(a.passedOn)).passed++;
+    if (a.burnedOn) get(keyFn(a.burnedOn)).burned++;
+  });
+  state.cash.forEach(c => {
+    const b = get(keyFn(c.date));
+    if (c.type === "payout") b.payout += num(c.amount); else b.spend += num(c.amount);
+  });
+  return {map: m, get: get};
+}
+const emptyB = k => ({k: k, pnl: 0, days: 0, wins: 0, losses: 0, sumW: 0, sumL: 0, best: null, worst: null, passed: 0, burned: 0, spend: 0, payout: 0});
+const winRate = b => b.days ? Math.round(b.wins / b.days * 100) + "%" : "—";
+const payoff = b => (b.wins && b.losses) ? (b.sumW / b.wins) / Math.abs(b.sumL / b.losses) : null;
+
+/* ---------- navegación ---------- */
+const VIEWS = ["resumen", "registrar", "cuentas", "analisis"];
+function route(){
+  let h = (location.hash || "").slice(1);
+  if (VIEWS.indexOf(h) < 0) h = "resumen";
+  VIEWS.forEach(v => { $("#view-" + v).hidden = v !== h; });
+  $$(".tabs a").forEach(a => {
+    if (a.getAttribute("href") === "#" + h) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (h === "registrar") updatePreview();
+}
+function goLog(accId){
+  syncSelects();
+  if (accId) $("#day-acc").value = accId;
+  loadExisting();
+  if (location.hash === "#registrar") route(); else location.hash = "#registrar";
+  updatePreview();
+}
+
+/* ---------- Resumen ---------- */
+function cell(label, value, cls, sub){
+  return '<div class="cell"><span class="lbl">' + esc(label) + '</span><span class="v ' + (cls || "") + '">' + value + '</span>' + (sub ? '<span class="s">' + esc(sub) + '</span>' : "") + '</div>';
+}
+function renderKpis(){
+  const t = totals();
+  $("#kpis").innerHTML =
+    cell("Invertido", money(t.invested), "", "precios + gastos") +
+    cell("Payouts cobrados", money(t.payouts), t.payouts > 0 ? "gain" : "", "") +
+    cell("Neto", money(t.net, true), t.net > 0 ? "gain" : t.net < 0 ? "loss" : "", "payouts − invertido") +
+    cell("Cuentas compradas", String(t.bought), "", t.active + " en juego") +
+    cell("Pasadas", String(t.passed), t.passed ? "gain" : "", "evaluaciones superadas") +
+    cell("Quemadas", String(t.burned), t.burned ? "loss" : "", "") +
+    cell("Tasa de paso", t.passRate == null ? "—" : Math.round(t.passRate * 100) + "%", "", t.closed ? t.passed + " de " + t.closed + " evaluaciones cerradas" : "sin evaluaciones cerradas") +
+    cell("Coste por pasada", t.costPerPass == null ? "—" : money(t.costPerPass), "", "invertido ÷ pasadas");
+}
+function meter(label, valueText, pctFill, cls, hint){
+  const p = Math.max(0, Math.min(100, pctFill));
+  return '<div class="meter ' + (cls || "") + '"><div class="meter-top"><span class="lbl">' + esc(label) + '</span><span class="n">' + valueText + '</span></div>' +
+    '<div class="bar"><i style="width:' + p.toFixed(1) + '%"></i></div>' + (hint ? '<p class="hint">' + hint + '</p>' : "") + '</div>';
+}
+function cardHTML(a){
+  const m = metrics(a);
+  const td = dayOf(a.id, today());
+  const used = td ? Math.max(0, -num(td.pnl)) : 0;
+  const dllLeft = Math.max(0, a.dll - used);
+  const cr = a.mll > 0 ? m.cushion / a.mll : 0;
+  const cCls = m.cushion <= 0 ? "loss" : cr < 0.25 ? "loss" : cr < 0.5 ? "warn" : "gain";
+  const dCls = a.dll > 0 && used >= a.dll ? "loss" : a.dll > 0 && used / a.dll >= 0.6 ? "warn" : "gain";
+  let meters = "";
+  if (a.stage === "eval"){
+    let hint = "";
+    if (m.best > 0) hint += "Mejor día " + money(m.best) + " · " + Math.round(m.share * 100) + "% del beneficio (máx " + a.consistency + "%)";
+    if (m.goal > a.target && m.toGoal > 0) hint += "<br>Con la consistencia necesitas " + money(m.goal) + " en total: faltan " + money(m.toGoal);
+    meters += meter("Objetivo", money(m.profit, true) + " / " + money(a.target), a.target > 0 ? m.profit / m.goal * 100 : 0, m.passReady ? "gain" : "", "Faltan " + money(m.toTarget) + " para el objetivo" + (hint ? "<br>" + hint : ""));
+  } else {
+    const sc = m.pct > 0 ? m.share / m.pct * 100 : 0;
+    meters += meter("Consistencia", Math.round(m.share * 100) + "% / " + a.consistency + "%", sc, m.consistOk ? "gain" : "warn", m.best > 0 ? "Mejor día " + money(m.best) : "Sin días registrados");
+  }
+  meters += meter("Colchón hasta quemar", money(m.cushion), cr * 100, cCls, "Nivel de liquidación " + money(m.level) + " · MLL " + money(a.mll));
+  meters += meter("DLL de hoy", money(used) + " / " + money(a.dll), a.dll > 0 ? used / a.dll * 100 : 0, dCls, "Te quedan " + money(dllLeft) + " de pérdida hoy");
+  let alerts = "";
+  if (m.passReady) alerts += '<div class="note gain">Objetivo cumplido y consistencia en regla. <button class="btn sm" data-act="mark-passed" data-id="' + a.id + '">Marcar como pasada</button></div>';
+  else if (a.stage === "eval" && a.target > 0 && m.profit >= a.target && !m.consistOk) alerts += '<div class="note warn">Llegaste al objetivo, pero tu mejor día pesa ' + Math.round(m.share * 100) + '% (máximo ' + a.consistency + '%). Necesitas ' + money(m.goal) + ' de beneficio total.</div>';
+  if (m.cushion <= 0) alerts += '<div class="note loss">El balance está en el nivel de liquidación o por debajo. <button class="btn sm" data-act="mark-burned" data-id="' + a.id + '">Marcar como quemada</button></div>';
+  if (a.dll > 0 && used >= a.dll) alerts += '<div class="note warn">Hoy alcanzaste el DLL.</div>';
+  const paid = state.cash.filter(c => c.type === "payout" && c.accountId === a.id).reduce((s, c) => s + num(c.amount), 0);
+  const pill = a.stage === "eval" ? '<span class="pill eval">En evaluación</span>' : '<span class="pill funded">Fondeada</span>';
+  return '<article class="card"><header class="card-head"><div><h3>' + esc(a.name) + '</h3><p class="sub">' + esc([a.firm, money(a.size), a.startDate ? "desde " + shortD(a.startDate) : ""].filter(Boolean).join(" · ")) + '</p></div><div class="pills">' + pill + '</div></header>' +
+    '<div class="bigrow"><div><span class="lbl">Balance</span><strong class="big">' + money(m.bal) + '</strong></div>' +
+    '<div><span class="lbl">' + (a.stage === "eval" ? "Beneficio" : "Beneficio fondeada") + '</span><strong class="big ' + (m.profit > 0 ? "gain" : m.profit < 0 ? "loss" : "") + '">' + money(m.profit, true) + '</strong></div></div>' +
+    '<div class="meters">' + meters + '</div>' + alerts +
+    (paid > 0 ? '<p class="hint">Payouts cobrados de esta cuenta: <span class="n">' + money(paid) + '</span></p>' : "") +
+    '<div class="actions"><button class="btn primary sm" data-act="log" data-id="' + a.id + '">Registrar día</button></div></article>';
+}
+function renderCards(){
+  const box = $("#activeCards");
+  if (!state.ready.accounts){ box.innerHTML = '<div class="empty">Cargando cuentas…</div>'; return; }
+  const alive = state.accounts.filter(a => a.alive).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  box.innerHTML = alive.length ? alive.map(cardHTML).join("") : '<div class="empty" style="grid-column:1/-1">No hay cuentas en juego. Añade una en <a href="#cuentas">Cuentas</a>.</div>';
+}
+function dayRowHTML(d){
+  const p = num(d.pnl);
+  return '<div class="row"><span class="d">' + esc(shortD(d.date)) + '</span><div class="grow"><strong>' + esc(accName(d.accountId)) + '</strong>' + (d.note ? '<small>' + esc(d.note) + '</small>' : "") + '</div>' +
+    '<span class="amt ' + (p > 0 ? "gain" : p < 0 ? "loss" : "") + '">' + money(p, true) + '</span>' +
+    '<span class="actions"><button class="btn sm" data-act="edit-day" data-id="' + esc(d.id) + '">Editar</button><button class="btn sm danger" data-act="del-day" data-id="' + esc(d.id) + '">Eliminar</button></span></div>';
+}
+function renderRecent(){
+  const box = $("#recentDays");
+  if (!state.ready.days){ box.innerHTML = '<div class="empty">Cargando días…</div>'; return; }
+  const ds = state.days.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  box.innerHTML = ds.length ? '<div class="list">' + ds.map(dayRowHTML).join("") + '</div>' : '<div class="empty">Todavía no registraste ningún día. Pulsa Registrar día para el primero.</div>';
+}
+
+/* ---------- Registrar día ---------- */
+function syncSelects(){
+  const sel = $("#day-acc"), prev = sel.value;
+  const list = state.accounts.slice().sort((a, b) => (b.alive - a.alive) || (b.startDate || "").localeCompare(a.startDate || ""));
+  const sig = list.map(a => a.id + a.name + a.alive).join("|");
+  if (sel.dataset.sig !== sig){
+    sel.dataset.sig = sig;
+    sel.innerHTML = list.length ? list.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + (a.alive ? "" : " (quemada)") + '</option>').join("") : '<option value="">Sin cuentas</option>';
+    if (prev && list.some(a => a.id === prev)) sel.value = prev;
+    if (!prev) loadExisting();
+  }
+  const cs = $("#cash-acc"), cprev = cs.value;
+  const csig = list.map(a => a.id + a.name).join("|");
+  if (cs.dataset.sig !== csig){
+    cs.dataset.sig = csig;
+    cs.innerHTML = '<option value="">General (sin cuenta)</option>' + list.map(a => '<option value="' + esc(a.id) + '">' + esc(a.name) + '</option>').join("");
+    if (cprev) cs.value = cprev;
+  }
+}
+function signedAmount(){
+  const raw = $("#day-amount").value;
+  const v = Math.abs(num(raw));
+  const neg = $("#day-loss").checked || /^\s*[-−]/.test(raw);
+  return (neg ? -v : v) + 0;
+}
+function loadExisting(){
+  const acc = accById($("#day-acc").value), date = $("#day-date").value;
+  const ex = acc && date ? dayOf(acc.id, date) : null;
+  $("#day-exists").hidden = !ex;
+  if (ex){
+    const p = num(ex.pnl);
+    $("#day-amount").value = String(Math.abs(p));
+    $("#day-loss").checked = p < 0; $("#day-win").checked = p >= 0;
+    $("#day-note").value = ex.note || "";
+    $("#day-dll").value = String(num(ex.dll) || (acc ? acc.dll : ""));
+  } else {
+    $("#day-amount").value = ""; $("#day-note").value = "";
+    $("#day-win").checked = true;
+    $("#day-dll").value = acc ? String(acc.dll) : "";
+  }
+}
+function pvLine(label, value, cls){
+  return '<div class="line"><span>' + label + '</span><span class="n ' + (cls || "") + '">' + value + '</span></div>';
+}
+function updatePreview(){
+  const box = $("#preview");
+  const acc = accById($("#day-acc").value);
+  if (!acc){ box.innerHTML = '<h2>Así queda la cuenta</h2><div class="empty">Añade una cuenta para ver cómo queda.</div>'; return; }
+  const date = $("#day-date").value || today();
+  const raw = $("#day-amount").value.trim();
+  const typed = raw !== "";
+  const pnl = typed ? signedAmount() : null;
+  const m = metrics(acc, typed ? {date: date, pnl: pnl} : null);
+  const existing = dayOf(acc.id, date);
+  const dayPnl = typed ? pnl : (existing ? num(existing.pnl) : 0);
+  const used = Math.max(0, -dayPnl);
+  const dll = num($("#day-dll").value) || acc.dll;
+  let h = '<h2>Así queda la cuenta</h2><p class="hint">' + (typed ? "Con el resultado que escribiste, antes de guardar." : "Estado actual. Escribe el monto del día para ver el efecto.") + '</p><div class="pv">';
+  h += pvLine("Balance", money(m.bal));
+  h += pvLine(acc.stage === "eval" ? "Beneficio acumulado" : "Beneficio desde fondeada", money(m.profit, true), m.profit > 0 ? "gain" : m.profit < 0 ? "loss" : "");
+  if (acc.stage === "eval"){
+    h += pvLine("Te falta para el objetivo (" + money(acc.target) + ")", money(m.toTarget));
+    if (m.goal > acc.target) h += pvLine("Con la consistencia de " + acc.consistency + "%", money(m.toGoal) + " más", m.toGoal > 0 ? "warn" : "gain");
+  }
+  h += pvLine("Colchón hasta quemar", money(m.cushion), m.cushion <= 0 ? "loss" : m.cushion / acc.mll < 0.25 ? "loss" : m.cushion / acc.mll < 0.5 ? "warn" : "gain");
+  h += pvLine("Nivel de liquidación", money(m.level));
+  h += pvLine("DLL del día: usado " + money(used), "quedan " + money(Math.max(0, dll - used)), dll > 0 && used >= dll ? "loss" : "");
+  if (m.best > 0) h += pvLine("Mejor día / peso en el beneficio", money(m.best) + " · " + Math.round(m.share * 100) + "%", m.consistOk ? "" : "warn");
+  h += '</div>';
+  if (m.cushion <= 0) h += '<div class="note loss">Con este resultado la cuenta llega al nivel de liquidación.</div>';
+  else if (dll > 0 && used >= dll) h += '<div class="note warn">Este resultado alcanza el DLL del día.</div>';
+  if (m.passReady) h += '<div class="note gain">Con este resultado cumples el objetivo y la consistencia.</div>';
+  else if (acc.stage === "eval" && acc.target > 0 && m.profit >= acc.target && !m.consistOk) h += '<div class="note warn">Cumples el objetivo, pero el mejor día pesa demasiado. Necesitas ' + money(m.goal) + ' de beneficio total.</div>';
+  box.innerHTML = h;
+}
+function flash(el, text, kind){ el.textContent = text; el.className = "msg " + (kind || ""); }
+async function submitDay(e){
+  e.preventDefault();
+  const msg = $("#day-msg");
+  if (!db){ flash(msg, "No se pueden guardar datos en esta vista.", "bad"); return; }
+  const acc = accById($("#day-acc").value);
+  const date = $("#day-date").value;
+  if (!acc){ flash(msg, "Elige una cuenta.", "bad"); return; }
+  if (!date){ flash(msg, "Elige la fecha.", "bad"); return; }
+  if ($("#day-amount").value.trim() === ""){ flash(msg, "Escribe cuánto ganaste o perdiste (0 si no operaste).", "bad"); return; }
+  const pnl = signedAmount();
+  const dll = num($("#day-dll").value) || acc.dll;
+  const id = acc.id + "_" + date;
+  const prev = dayOf(acc.id, date);
+  const m = metrics(acc, {date: date, pnl: pnl});
+  const btn = $("#day-save"); btn.disabled = true;
+  try {
+    await db.doc("days/" + id).set({accountId: acc.id, date: date, pnl: pnl, dll: dll, note: $("#day-note").value.trim(), stage: prev ? (prev.stage || acc.stage) : acc.stage});
+    if (dll !== acc.dll) await db.doc("accounts/" + acc.id).update({dll: dll});
+    let t = "Guardado: " + money(pnl, true) + ". Balance " + money(m.bal) + ".";
+    if (acc.stage === "eval") t += m.toGoal > 0 ? " Te faltan " + money(m.toGoal) + " para fondearte." : " Objetivo cumplido.";
+    t += " Colchón hasta quemar " + money(m.cushion) + ".";
+    flash(msg, t, m.cushion <= 0 ? "bad" : "ok");
+    $("#day-amount").value = ""; $("#day-note").value = ""; $("#day-win").checked = true;
+    $("#day-exists").hidden = true;
+  } catch (err){
+    flash(msg, "No se pudo guardar (" + (err && err.code ? err.code : "error") + "). Inténtalo de nuevo.", "bad");
+  } finally { btn.disabled = false; updatePreview(); }
+}
+
+/* ---------- Cuentas ---------- */
+function openAccForm(a){
+  editingAcc = a ? a.id : null;
+  $("#accForm").hidden = false;
+  $("#accFormTitle").textContent = a ? "Editar cuenta" : "Nueva cuenta";
+  $("#acc-save").textContent = a ? "Guardar cambios" : "Guardar cuenta";
+  $("#acc-firm").value = a ? a.firm : "Lucid";
+  $("#acc-name").value = a ? a.name : "";
+  $("#acc-size").value = a ? a.size : "25000";
+  $("#acc-cost").value = a && a.cost ? a.cost : "";
+  $("#acc-target").value = a ? a.target : "1250";
+  $("#acc-cons").value = a ? a.consistency : "40";
+  $("#acc-mll").value = a ? a.mll : "1000";
+  $("#acc-dll").value = a ? a.dll : "600";
+  $("#acc-dd").value = a ? a.ddType : "lock";
+  $("#acc-start").value = a ? a.startDate : today();
+  $("#acc-notes").value = a ? (a.notes || "") : "";
+  flash($("#acc-msg"), "");
+  $("#accForm").scrollIntoView({behavior: "smooth", block: "start"});
+}
+function closeAccForm(){ editingAcc = null; $("#accForm").hidden = true; }
+async function submitAcc(e){
+  e.preventDefault();
+  const msg = $("#acc-msg");
+  if (!db){ flash(msg, "No se pueden guardar datos en esta vista.", "bad"); return; }
+  const size = num($("#acc-size").value), mll = num($("#acc-mll").value);
+  if (size <= 0){ flash(msg, "El tamaño de la cuenta debe ser mayor que 0.", "bad"); return; }
+  if (mll <= 0){ flash(msg, "Escribe la pérdida máxima (MLL).", "bad"); return; }
+  const firm = $("#acc-firm").value.trim();
+  const nAcc = state.accounts.length + 1;
+  const data = {
+    firm: firm, name: $("#acc-name").value.trim() || ((firm || "Cuenta") + " " + Math.round(size / 1000) + "K #" + nAcc),
+    size: size, cost: num($("#acc-cost").value), target: num($("#acc-target").value), mll: mll,
+    dll: num($("#acc-dll").value), consistency: num($("#acc-cons").value), ddType: $("#acc-dd").value,
+    startDate: $("#acc-start").value || today(), notes: $("#acc-notes").value.trim()
+  };
+  try {
+    if (editingAcc){
+      await db.doc("accounts/" + editingAcc).update(data);
+    } else {
+      await db.doc("accounts/" + uid("a")).set(Object.assign({stage: "eval", alive: true, passedOn: null, burnedOn: null, burnedIn: null}, data));
+    }
+    closeAccForm();
+  } catch (err){
+    flash(msg, "No se pudo guardar (" + (err && err.code ? err.code : "error") + ").", "bad");
+  }
+}
+function accRowHTML(a){
+  const pills = [];
+  if (a.alive) pills.push(a.stage === "eval" ? '<span class="pill eval">En evaluación</span>' : '<span class="pill funded">Fondeada</span>');
+  else {
+    pills.push('<span class="pill burned">Quemada' + (a.burnedIn === "funded" ? " fondeada" : a.burnedIn === "eval" ? " en evaluación" : "") + '</span>');
+    if (a.passedOn) pills.push('<span class="pill funded">Pasó la evaluación</span>');
+  }
+  if (a.alive && a.passedOn) pills.push('<span class="pill">Pasada ' + esc(shortD(a.passedOn)) + '</span>');
+  if (!a.cost) pills.push('<span class="pill">Falta el precio</span>');
+  const ddText = a.ddType === "fixed" ? "Fijo" : a.ddType === "trail" ? "Trailing EOD" : "Trailing EOD con bloqueo";
+  let acts = '<button class="btn sm" data-act="edit-account" data-id="' + a.id + '">Editar</button>';
+  if (a.alive){
+    if (a.stage === "eval") acts += '<button class="btn sm" data-act="mark-passed" data-id="' + a.id + '">Marcar como pasada</button>';
+    acts += '<button class="btn sm danger" data-act="mark-burned" data-id="' + a.id + '">Marcar como quemada</button>';
+  } else acts += '<button class="btn sm" data-act="reopen" data-id="' + a.id + '">Reabrir</button>';
+  acts += '<button class="btn sm danger" data-act="del-account" data-id="' + a.id + '">Eliminar</button>';
+  return '<article class="card ' + (a.alive ? "" : "dim") + '"><header class="card-head"><div><h3>' + esc(a.name) + '</h3><p class="sub">' + esc(a.firm) + (a.notes ? " · " + esc(a.notes) : "") + '</p></div><div class="pills">' + pills.join("") + '</div></header>' +
+    '<dl class="facts"><div><dt>Tamaño</dt><dd>' + money(a.size) + '</dd></div><div><dt>Precio</dt><dd>' + (a.cost ? money(a.cost) : "—") + '</dd></div><div><dt>Objetivo</dt><dd>' + money(a.target) + '</dd></div><div><dt>Consistencia</dt><dd>' + a.consistency + '%</dd></div>' +
+    '<div><dt>MLL</dt><dd>' + money(a.mll) + '</dd></div><div><dt>DLL actual</dt><dd>' + money(a.dll) + '</dd></div><div><dt>Drawdown</dt><dd>' + ddText + '</dd></div><div><dt>Inicio</dt><dd>' + (a.startDate ? esc(shortD(a.startDate)) : "—") + '</dd></div>' +
+    (a.burnedOn ? '<div><dt>Quemada</dt><dd>' + esc(shortD(a.burnedOn)) + '</dd></div>' : "") + '</dl><div class="actions">' + acts + '</div></article>';
+}
+function renderAccList(){
+  const box = $("#accList");
+  if (!state.ready.accounts){ box.innerHTML = '<div class="empty">Cargando cuentas…</div>'; return; }
+  const list = state.accounts.slice().sort((a, b) => (b.alive - a.alive) || (b.startDate || "").localeCompare(a.startDate || ""));
+  box.innerHTML = list.length ? list.map(accRowHTML).join("") : '<div class="empty">Aún no tienes cuentas. Pulsa Nueva cuenta para añadir la primera.</div>';
+}
+function renderCash(){
+  const box = $("#cashList");
+  if (!state.ready.cash){ box.innerHTML = '<div class="empty">Cargando movimientos…</div>'; return; }
+  const list = state.cash.slice().sort((a, b) => b.date.localeCompare(a.date));
+  box.innerHTML = list.length ? '<div class="list">' + list.map(c =>
+    '<div class="row"><span class="d">' + esc(shortD(c.date)) + '</span><div class="grow"><span class="pill cash-' + esc(c.type) + '">' + (c.type === "payout" ? "Payout" : "Gasto") + '</span> ' + esc(c.accountId ? accName(c.accountId) : "General") + (c.concept ? '<small>' + esc(c.concept) + '</small>' : "") + '</div>' +
+    '<span class="amt ' + (c.type === "payout" ? "gain" : "loss") + '">' + (c.type === "payout" ? "+" : "−") + money(Math.abs(num(c.amount))) + '</span>' +
+    '<span class="actions"><button class="btn sm danger" data-act="del-cash" data-id="' + esc(c.id) + '">Eliminar</button></span></div>').join("") + '</div>'
+    : '<div class="empty">Sin movimientos. Cuando cobres un payout o pagues un reset, anótalo aquí.</div>';
+}
+async function submitCash(e){
+  e.preventDefault();
+  const msg = $("#cash-msg");
+  if (!db){ flash(msg, "No se pueden guardar datos en esta vista.", "bad"); return; }
+  const amount = Math.abs(num($("#cash-amount").value));
+  const date = $("#cash-date").value;
+  if (!amount){ flash(msg, "Escribe un monto mayor que 0.", "bad"); return; }
+  if (!date){ flash(msg, "Elige la fecha.", "bad"); return; }
+  try {
+    await db.doc("cash/" + uid("c")).set({type: $("#cash-type").value, accountId: $("#cash-acc").value, date: date, amount: amount, concept: $("#cash-concept").value.trim()});
+    $("#cash-amount").value = ""; $("#cash-concept").value = "";
+    flash(msg, "Movimiento añadido.", "ok");
+  } catch (err){ flash(msg, "No se pudo guardar (" + (err && err.code ? err.code : "error") + ").", "bad"); }
+}
+
+/* ---------- Análisis ---------- */
+function sumCells(b){
+  const po = payoff(b);
+  return cell("P&L de cuentas", money(b.pnl, true), b.pnl > 0 ? "gain" : b.pnl < 0 ? "loss" : "") +
+    cell("Días operados", String(b.days), "", b.days ? b.wins + " verdes · " + b.losses + " rojos" : "") +
+    cell("Acierto", winRate(b), "") +
+    cell("Payoff", po == null ? "—" : po.toFixed(2), "", b.wins && b.losses ? "ganancia media " + money(b.sumW / b.wins) + " · pérdida media " + money(b.sumL / b.losses) : "") +
+    cell("Mejor día", b.best == null ? "—" : money(b.best, true), b.best > 0 ? "gain" : "") +
+    cell("Peor día", b.worst == null ? "—" : money(b.worst, true), b.worst < 0 ? "loss" : "") +
+    cell("Pasadas / quemadas", b.passed + " / " + b.burned, "") +
+    cell("Caja", money(b.payout - b.spend, true), b.payout - b.spend > 0 ? "gain" : b.payout - b.spend < 0 ? "loss" : "", money(b.payout) + " payouts · " + money(b.spend) + " gastos");
+}
+function tableHTML(rows, curKey, labelFn){
+  let h = '<table><thead><tr><th>Periodo</th><th>P&amp;L</th><th>Días</th><th>Acierto</th><th>Mejor</th><th>Peor</th><th>Pasadas</th><th>Quemadas</th><th>Gastos</th><th>Payouts</th><th>Caja</th></tr></thead><tbody>';
+  rows.forEach(b => {
+    const caja = b.payout - b.spend;
+    h += '<tr' + (b.k === curKey ? ' class="cur"' : "") + '><td>' + esc(labelFn(b.k)) + '</td><td class="' + (b.pnl > 0 ? "gain" : b.pnl < 0 ? "loss" : "") + '">' + money(b.pnl, true) + '</td><td>' + b.days + '</td><td>' + winRate(b) + '</td><td>' + (b.best == null ? "—" : money(b.best, true)) + '</td><td>' + (b.worst == null ? "—" : money(b.worst, true)) + '</td><td>' + b.passed + '</td><td>' + b.burned + '</td><td>' + money(b.spend) + '</td><td>' + money(b.payout) + '</td><td class="' + (caja > 0 ? "gain" : caja < 0 ? "loss" : "") + '">' + money(caja, true) + '</td></tr>';
+  });
+  return h + '</tbody></table>';
+}
+function chartHTML(wb, ws){
+  const keys = [];
+  for (let i = 7; i >= 0; i--) keys.push(addDays(ws, -7 * i));
+  const vals = keys.map(k => { const b = wb.map.get(k); return b ? b.pnl : 0; });
+  if (!vals.some(v => v !== 0)) return '<div class="empty" style="border:0">Cuando registres días, aquí verás el resultado de cada semana.</div>';
+  const W = 640, H = 230, L = 8, R = 8, T = 30, B = 30;
+  const lo = Math.min(0, Math.min.apply(null, vals)), hi = Math.max(0, Math.max.apply(null, vals));
+  const span = (hi - lo) || 1;
+  const y = v => T + (hi - v) / span * (H - T - B);
+  const band = (W - L - R) / keys.length, bw = band * 0.56;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="P&amp;L por semana, últimas 8 semanas">';
+  s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" stroke="var(--line)" stroke-width="1.5"/>';
+  keys.forEach((k, i) => {
+    const v = vals[i], x = L + i * band + (band - bw) / 2;
+    const y0 = y(0), y1 = y(v), top = Math.min(y0, y1), h = Math.max(Math.abs(y1 - y0), v === 0 ? 0 : 2);
+    if (v !== 0) s += '<rect x="' + x.toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' + (v > 0 ? "var(--gain)" : "var(--loss)") + '"/>';
+    const ly = v >= 0 ? top - 7 : top + h + 15;
+    s += '<text x="' + (L + i * band + band / 2).toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" font-size="11" font-family="var(--font-mono)" fill="currentColor">' + (v === 0 ? "0" : esc(money(v, true))) + '</text>';
+    s += '<text x="' + (L + i * band + band / 2).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" font-family="var(--font-mono)" fill="currentColor">S' + isoWeek(k) + '</text>';
+  });
+  return s + '</svg>';
+}
+function renderAnalysis(){
+  const t = today(), ws = weekStart(t), mk = t.slice(0, 7);
+  const wb = buckets(weekStart), mb = buckets(d => d.slice(0, 7));
+  $("#sumWeek").innerHTML = sumCells(wb.map.get(ws) || emptyB(ws));
+  $("#sumMonth").innerHTML = sumCells(mb.map.get(mk) || emptyB(mk));
+  $("#chart").innerHTML = chartHTML(wb, ws);
+  wb.get(ws); mb.get(mk);
+  const wrows = Array.from(wb.map.values()).sort((a, b) => b.k.localeCompare(a.k)).slice(0, 8);
+  const mrows = Array.from(mb.map.values()).sort((a, b) => b.k.localeCompare(a.k)).slice(0, 6);
+  $("#weekTable").innerHTML = tableHTML(wrows, ws, weekLabel);
+  $("#monthTable").innerHTML = tableHTML(mrows, mk, monthLabel);
+  const ta = $("#rules");
+  if (document.activeElement !== ta && ta.value !== state.rules) ta.value = state.rules;
+}
+
+/* ---------- Claude ---------- */
+function periodRange(kind){
+  const t = today(), ws = weekStart(t);
+  if (kind === "week") return {from: ws, to: addDays(ws, 6), label: "esta semana"};
+  if (kind === "lastweek"){ const f = addDays(ws, -7); return {from: f, to: addDays(f, 6), label: "la semana pasada"}; }
+  let yy = +t.slice(0, 4), mm = +t.slice(5, 7);
+  if (kind === "lastmonth"){ mm -= 1; if (mm < 1){ mm = 12; yy -= 1; } }
+  const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  const p = n => String(n).padStart(2, "0");
+  return {from: yy + "-" + p(mm) + "-01", to: yy + "-" + p(mm) + "-" + p(last), label: kind === "lastmonth" ? "el mes pasado" : "este mes"};
+}
+function buildPrompt(kind){
+  const r = periodRange(kind);
+  const inR = s => s >= r.from && s <= r.to;
+  const days = state.days.filter(d => inR(d.date)).sort((a, b) => a.date.localeCompare(b.date));
+  const cash = state.cash.filter(c => inR(c.date));
+  const b = emptyB("x");
+  days.forEach(d => { const p = num(d.pnl); b.pnl += p; b.days++; if (p > 0){ b.wins++; b.sumW += p; } else if (p < 0){ b.losses++; b.sumL += p; } });
+  const accLines = state.accounts.map(a => {
+    const m = metrics(a);
+    return "- " + a.name + ": " + (a.alive ? (a.stage === "eval" ? "en evaluación" : "fondeada") : "quemada" + (a.burnedOn ? " el " + a.burnedOn : "")) + ", tamaño " + a.size + ", objetivo " + a.target + ", MLL " + a.mll + ", DLL " + a.dll + ", consistencia " + a.consistency + "%, precio " + a.cost + ", balance " + Math.round(m.bal) + ", colchón " + Math.round(m.cushion);
+  }).join("\n") || "(sin cuentas)";
+  const dayLines = days.map(d => d.date + " | " + accName(d.accountId) + " | " + num(d.pnl) + " | DLL " + (num(d.dll) || "?") + (d.note ? " | " + d.note : "")).join("\n") || "(sin días registrados en el periodo)";
+  const cashLines = cash.map(c => c.date + " | " + c.type + " | " + num(c.amount) + (c.concept ? " | " + c.concept : "")).join("\n") || "(sin movimientos)";
+  return "Eres mi analista de trading de futuros (MNQ) con cuentas de fondeo. Analiza mi periodo y responde en español, en texto plano sin símbolos de markdown, en 250 palabras como máximo. Usa estas secciones, cada título en su propia línea: Resultado, Lo que funcionó, Lo que falló, Disciplina frente a mis reglas, Plan para el siguiente periodo (3 acciones concretas). Usa solo los datos de abajo; si falta información para algo, dilo. Cifras en dólares.\n\n" +
+    "Mis reglas:\n" + (state.rules.trim() || "(no he escrito reglas)") + "\n\nPeriodo: " + r.label + " (" + r.from + " a " + r.to + ")\n" +
+    "Totales del periodo: P&L " + Math.round(b.pnl) + ", días " + b.days + ", verdes " + b.wins + ", rojos " + b.losses + "\n\nCuentas:\n" + accLines + "\n\nDías (fecha | cuenta | resultado | DLL | nota):\n" + dayLines + "\n\nMovimientos de caja (fecha | tipo | monto | concepto):\n" + cashLines;
+}
+let aiCtl = null;
+const AI_ERR = {
+  not_granted: "No permitiste que esta página use Claude.", rate_limited: "Demasiadas consultas seguidas. Espera un momento y vuelve a intentarlo.",
+  session_expired: "Tu sesión caducó. Vuelve a iniciar sesión.", refused: "Claude no pudo responder a esto.", empty_completion: "Claude no devolvió texto. Inténtalo de nuevo.",
+  prompt_too_large: "Hay demasiados datos para analizar de una vez."
+};
+async function runAI(){
+  if (!sample) return;
+  const out = $("#aiOut"), run = $("#aiRun"), stop = $("#aiStop");
+  aiCtl = new AbortController();
+  run.disabled = true; stop.hidden = false;
+  out.textContent = "Pensando…";
+  try {
+    const res = await sample(buildPrompt($("#aiPeriod").value), {signal: aiCtl.signal, cache: false, onText: u => { out.textContent = u.text; }});
+    if (res.truncated) out.textContent = res.text + "\n\n(La respuesta se cortó. Prueba con un periodo más corto.)";
+  } catch (e){
+    if (e && e.code === "cancelled") out.textContent = (e.text || "") || "Detenido.";
+    else if (e && (e.code === "sampling_disabled" || e.code === "capability_disabled" || e.code === "not_declared")) $("#aiPanel").hidden = true;
+    else out.textContent = (e && e.text ? e.text + "\n\n" : "") + (AI_ERR[e && e.code] || "No se pudo completar el análisis. Inténtalo de nuevo.");
+  } finally { run.disabled = false; stop.hidden = true; aiCtl = null; }
+}
+
+/* ---------- acciones por delegación ---------- */
+const armed = new WeakSet();
+function confirmTwice(btn){
+  if (armed.has(btn)) return true;
+  armed.add(btn);
+  const old = btn.textContent;
+  btn.textContent = "Confirmar"; btn.classList.add("armed");
+  setTimeout(() => { armed.delete(btn); btn.textContent = old; btn.classList.remove("armed"); }, 4000);
+  return false;
+}
+async function onAction(btn){
+  const act = btn.dataset.act, id = btn.dataset.id;
+  const acc = accById(id);
+  try {
+    if (act === "log") return goLog(id);
+    if (act === "edit-account"){ if (acc){ location.hash = "#cuentas"; openAccForm(acc); } return; }
+    if (!db) return;
+    if (act === "mark-passed" && acc){
+      await db.doc("accounts/" + id).update({stage: "funded", passedOn: today()});
+    } else if (act === "mark-burned" && acc){
+      if (!confirmTwice(btn)) return;
+      await db.doc("accounts/" + id).update({alive: false, burnedOn: today(), burnedIn: acc.stage});
+    } else if (act === "reopen" && acc){
+      await db.doc("accounts/" + id).update({alive: true, burnedOn: null, burnedIn: null});
+    } else if (act === "del-account" && acc){
+      if (!confirmTwice(btn)) return;
+      const ds = await db.collection("days").where("accountId", "==", id).get();
+      for (const d of ds.docs) await db.doc("days/" + d.id).delete();
+      const cs = await db.collection("cash").where("accountId", "==", id).get();
+      for (const c of cs.docs) await db.doc("cash/" + c.id).delete();
+      await db.doc("accounts/" + id).delete();
+    } else if (act === "edit-day"){
+      const d = state.days.find(x => x.id === id);
+      if (d){
+        syncSelects();
+        $("#day-acc").value = d.accountId; $("#day-date").value = d.date;
+        goLog(d.accountId);
+        window.scrollTo({top: 0, behavior: "smooth"});
+      }
+    } else if (act === "del-day"){
+      if (!confirmTwice(btn)) return;
+      await db.doc("days/" + id).delete();
+    } else if (act === "del-cash"){
+      if (!confirmTwice(btn)) return;
+      await db.doc("cash/" + id).delete();
+    }
+  } catch (err){
+    setSync("No se pudo completar la acción (" + (err && err.code ? err.code : "error") + ").", true);
+  }
+}
+
+/* ---------- render general ---------- */
+function setSync(text, bad){ const s = $("#sync"); s.textContent = text; s.className = "sync" + (bad ? " err" : ""); }
+function renderAll(){
+  syncSelects();
+  renderKpis(); renderCards(); renderRecent(); renderAccList(); renderCash(); renderAnalysis();
+  updatePreview();
+}
+
+/* ---------- arranque ---------- */
+function wire(){
+  $("#day-date").value = today(); $("#cash-date").value = today();
+  window.addEventListener("hashchange", route);
+  document.addEventListener("click", e => { const b = e.target.closest("[data-act]"); if (b) onAction(b); });
+  $("#dayForm").addEventListener("submit", submitDay);
+  $("#day-acc").addEventListener("change", () => { loadExisting(); updatePreview(); });
+  $("#day-date").addEventListener("change", () => { loadExisting(); updatePreview(); });
+  $("#day-amount").addEventListener("input", () => { if (/^\s*[-−]/.test($("#day-amount").value)) $("#day-loss").checked = true; updatePreview(); });
+  $("#day-dll").addEventListener("input", updatePreview);
+  $$('input[name="sign"]').forEach(r => r.addEventListener("change", updatePreview));
+  $("#toggleNew").addEventListener("click", () => { if ($("#accForm").hidden) openAccForm(null); else closeAccForm(); });
+  $("#acc-cancel").addEventListener("click", closeAccForm);
+  $("#accForm").addEventListener("submit", submitAcc);
+  $("#cashForm").addEventListener("submit", submitCash);
+  $("#aiRun").addEventListener("click", runAI);
+  $("#aiStop").addEventListener("click", () => { if (aiCtl) aiCtl.abort(); });
+  $("#rules").addEventListener("change", async () => {
+    if (!db) return;
+    const v = $("#rules").value;
+    state.rules = v;
+    try { await db.doc("settings/prefs").set({rules: v}); } catch (err){ setSync("No se pudieron guardar tus reglas.", true); }
+  });
+}
+function lockForms(){
+  $$("#view-registrar button, #view-cuentas button.primary, #view-registrar input, #view-registrar select").forEach(el => { el.disabled = true; });
+  setSync("Esta página necesita guardar datos y no está disponible en esta vista. Ábrela desde claude.ai con tu sesión iniciada.", true);
+}
+async function boot(){
+  wire(); route(); renderAll();
+  if (!window.claude || !window.claude.use){ lockForms(); return; }
+  try { db = await window.claude.use("db"); } catch (e){ db = null; }
+  try { sample = await window.claude.use("sample"); } catch (e){ sample = null; }
+  if (!sample) $("#aiPanel").hidden = true;
+  if (!db){ lockForms(); return; }
+  const timer = setTimeout(() => { if (!confirmedOnce) setSync("Todavía no se pudo contactar con el almacén de datos. Lo que ves puede estar desactualizado.", true); }, 10000);
+  const onErr = e => setSync("No se pudieron leer los datos (" + (e && e.code ? e.code : "error") + ").", true);
+  const sub = (name, key, map) => db.collection(name).onSnapshot(snap => {
+    state[key] = snap.docs.map(d => map(Object.assign({id: d.id}, d.data())));
+    state.ready[key] = true;
+    if (!snap.metadata.fromCache && !confirmedOnce){ confirmedOnce = true; clearTimeout(timer); setSync(""); }
+    renderAll();
+  }, onErr);
+  sub("accounts", "accounts", normAcc);
+  sub("days", "days", d => d);
+  sub("cash", "cash", d => d);
+  db.doc("settings/prefs").onSnapshot(s => { state.rules = s.exists ? String((s.data() || {}).rules || "") : ""; renderAnalysis(); }, onErr);
+}
+boot();
+})();
+</script>
+
+</body></html>
